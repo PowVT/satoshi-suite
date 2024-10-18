@@ -1,0 +1,12 @@
+[package]
+name = "satoshi-suite-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+satoshi-suite-config.workspace = true
+
+bitcoin.workspace = true
+bitcoincore-rpc.workspace = true

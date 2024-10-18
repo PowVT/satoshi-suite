@@ -1,0 +1,17 @@
+[package]
+name = "satoshi-suite-wallet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+satoshi-suite-client.workspace = true
+satoshi-suite-config.workspace = true
+satoshi-suite-utxo-selection.workspace = true
+
+bitcoin.workspace = true
+bitcoincore-rpc.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true

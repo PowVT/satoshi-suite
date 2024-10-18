@@ -1,0 +1,16 @@
+[package]
+name = "satoshi-suite-signing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+satoshi-suite-config.workspace = true
+satoshi-suite-utxo-selection.workspace = true
+satoshi-suite-wallet.workspace = true
+
+bitcoin.workspace = true
+bitcoincore-rpc.workspace = true
+hex.workspace = true
+log.workspace = true
