@@ -60,12 +60,10 @@ pub struct Cli {
 
     /// Transaction recipient address
     #[arg(short='r', long, value_parser = string_to_address, default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")]
-    // dummy address, do not use
     pub recipient: Address,
 
     /// Wallet address
     #[arg(short='a', long, value_parser = string_to_address, default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")]
-    // dummy address, do not use
     pub address: Address,
 
     /// Wallet descriptor
@@ -87,6 +85,10 @@ pub struct Cli {
     /// Transaction fee
     #[arg(short='f', long, value_parser = parse_amount, default_value = "0.1")]
     pub fee_amount: Amount,
+
+    /// Postage
+    #[arg(short = 'p', long, default_value = "50000")]
+    pub postage: u64,
 
     /// Max transaction fee rate in sat/vB
     #[arg(short = 'u', long, default_value = "0.1")]
@@ -165,6 +167,7 @@ pub enum Action {
     CombinePsbts,
     FinalizePsbt,
     FinalizePsbtAndBroadcast,
+    InscribeOrdinal,
     BroadcastTx,
 }
 

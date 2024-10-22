@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+satoshi-suite-ordinals.workspace = true
 satoshi-suite-client.workspace = true
 satoshi-suite-config.workspace = true
 satoshi-suite-utxo-selection.workspace = true
@@ -15,3 +16,4 @@ bitcoincore-rpc.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+ord.workspace = true

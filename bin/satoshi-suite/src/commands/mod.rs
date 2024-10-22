@@ -20,7 +20,12 @@ pub fn handler(args: &Cli, config: &Config) -> Result<(), Box<dyn Error>> {
         Action::BootstrapEnv => bootstrap_env(&args.address_type, &config),
         Action::GetBlockHeight => get_block_height(&config),
         Action::NewWallet => new_wallet(&args.wallet_name, &config),
-        Action::NewMultisig => new_multisig_wallet( &args.wallet_names, args.nrequired, &args.multisig_name, &config),
+        Action::NewMultisig => new_multisig_wallet(
+            &args.wallet_names,
+            args.nrequired,
+            &args.multisig_name,
+            &config,
+        ),
         Action::GetWalletInfo => get_wallet_info(&args.wallet_name, &config),
         Action::ListDescriptors => list_descriptors(&args.wallet_name, &config),
         Action::GetNewAddress => get_new_address(&args.wallet_name, &args.address_type, &config),
@@ -45,35 +50,47 @@ pub fn handler(args: &Cli, config: &Config) -> Result<(), Box<dyn Error>> {
         Action::DecodeRawTx => decode_raw_tx(&args.tx_hex, &config),
         Action::VerifySignedTx => verify_signed_transaction(&args.tx_hex, &config),
         Action::BroadcastTx => broadcast_tx(&args.tx_hex, &config),
-        Action::CreatePsbt => create_psbt(&args.wallet_name, &args.recipient, args.amount, args.fee_amount, args.utxo_strat, &config),
+        Action::CreatePsbt => create_psbt(
+            &args.wallet_name,
+            &args.recipient,
+            args.amount,
+            args.fee_amount,
+            args.utxo_strat,
+            &config,
+        ),
         Action::ProcessPsbt => process_psbt(&args.wallet_name, &args.psbt_hex, &config),
         Action::DecodePsbt => decode_psbt(&args.psbt_hex, &config),
         Action::AnalyzePsbt => analyze_psbt(&args.psbt_hex, &config),
         Action::CombinePsbts => combine_psbts(&args.psbts, &config),
         Action::FinalizePsbt => finalize_psbt(&args.psbt_hex, &config),
         Action::FinalizePsbtAndBroadcast => finalize_psbt_and_broadcast(&args.psbt_hex, &config),
+        Action::InscribeOrdinal => inscribe_ordinal(&args.wallet_name, &args.postage, &config),
         Action::MineBlocks => {
-            mine_blocks(&args.wallet_name, args.blocks, &args.address_type, &config)
+            wallet_mine_blocks(&args.wallet_name, args.blocks, &args.address_type, &config)
         }
     }
 }
 
 pub fn bootstrap_env(address_type: &AddressType, config: &Config) -> Result<(), Box<dyn Error>> {
     for i in 1..11 {
-        new_wallet(&format!("wallet{}", i), &config)?;
-        mine_blocks(&format!("wallet{}", i), 1, &address_type, &config)?;
+        let wallet = Wallet::new(&format!("wallet{}", i), &config)?;
+        let _ = wallet.mine_blocks(&address_type, 1)?;
     }
 
-    new_wallet("miner", &config)?;
-    mine_blocks("miner", 100, &address_type, &config)?;
+    let miner = Wallet::new("miner", &config)?;
+    let _ = miner.mine_blocks(&address_type, 100)?;
 
     for i in 1..11 {
         let wallet = Wallet::new(&format!("wallet{}", i), &config)?;
         let balance = wallet.get_balances()?;
-        assert!(balance
-            .mine
-            .trusted
-            .eq(&bitcoin::Amount::from_btc(50.0).unwrap()));
+
+        let expected_balance = bitcoin::Amount::from_btc(50.0).unwrap();
+        if !balance.mine.trusted.eq(&expected_balance) {
+            return Err(format!(
+                "Wallet {} balance mismatch. Expected: {}, Actual: {}",
+                i, expected_balance, balance.mine.trusted
+            ).into());
+        }
     }
 
     Ok(())
@@ -92,7 +109,12 @@ pub fn new_wallet(wallet_name: &str, config: &Config) -> Result<(), Box<dyn Erro
     Ok(())
 }
 
-pub fn new_multisig_wallet(wallet_names: &Vec<String>, nrequired: u32, multisig_name: &str, config: &Config) -> Result<(), Box<dyn Error>> {
+pub fn new_multisig_wallet(
+    wallet_names: &Vec<String>,
+    nrequired: u32,
+    multisig_name: &str,
+    config: &Config,
+) -> Result<(), Box<dyn Error>> {
     let multisig = MultisigWallet::new(wallet_names, nrequired, multisig_name, config)?;
     info!("Multisig wallet created");
     info!("Multisig wallet name: {}", multisig.name);
@@ -185,8 +207,10 @@ pub fn get_tx(wallet_name: &str, txid: &str, config: &Config) -> Result<(), Box<
 
 pub fn get_tx_out(txid: &str, vout: u32, config: &Config) -> Result<(), Box<dyn Error>> {
     let client = create_rpc_client(config, None)?;
-    let txid_converted = bitcoin::Txid::from_str(txid).map_err(|_| Box::<dyn Error>::from("Invalid TxID"))?;
-    let tx_out = client.get_tx_out(&txid_converted, vout, None)?
+    let txid_converted =
+        bitcoin::Txid::from_str(txid).map_err(|_| Box::<dyn Error>::from("Invalid TxID"))?;
+    let tx_out = client
+        .get_tx_out(&txid_converted, vout, None)?
         .ok_or_else(|| Box::<dyn Error>::from("TxOut not found"))?;
     info!("{:#?}", tx_out);
     Ok(())
@@ -240,8 +264,22 @@ pub fn broadcast_tx(tx_hex: &str, config: &Config) -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-pub fn create_psbt(wallet_name: &str, recipient: &Address, amount: bitcoin::Amount, fee_amount: bitcoin::Amount, utxo_strat: UTXOStrategy, config: &Config) -> Result<(), Box<dyn Error>> {
-    let psbt = MultisigWallet::create_psbt(wallet_name, recipient, amount, fee_amount, utxo_strat, config)?;
+pub fn create_psbt(
+    wallet_name: &str,
+    recipient: &Address,
+    amount: bitcoin::Amount,
+    fee_amount: bitcoin::Amount,
+    utxo_strat: UTXOStrategy,
+    config: &Config,
+) -> Result<(), Box<dyn Error>> {
+    let psbt = MultisigWallet::create_psbt(
+        wallet_name,
+        recipient,
+        amount,
+        fee_amount,
+        utxo_strat,
+        config,
+    )?;
     info!("PSBT: {:#?}", psbt);
     Ok(())
 }
@@ -287,8 +325,12 @@ pub fn finalize_psbt_and_broadcast(psbt: &str, config: &Config) -> Result<(), Bo
     if !res.complete {
         return Err("Incomplete PSBT".into());
     }
-    let raw_hex: String = res.hex.ok_or_else(|| Box::<dyn Error>::from("Cannot get hex from finalized PSBT"))?
-        .iter().map(|b| format!("{:02x}", b)).collect();
+    let raw_hex: String = res
+        .hex
+        .ok_or_else(|| Box::<dyn Error>::from("Cannot get hex from finalized PSBT"))?
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect();
 
     info!("FinalizedPSBT: {}", raw_hex);
 
@@ -297,16 +339,27 @@ pub fn finalize_psbt_and_broadcast(psbt: &str, config: &Config) -> Result<(), Bo
     Ok(())
 }
 
-pub fn mine_blocks(
+pub fn inscribe_ordinal(
+    wallet_name: &str,
+    postage: &u64,
+    config: &Config,
+) -> Result<(), Box<dyn Error>> {
+    let wallet = Wallet::new(wallet_name, config)?;
+    let inscription_info = wallet.inscribe_ordinal(postage, config)?;
+    info!("Commit txid: {}", inscription_info.commit_txid);
+    info!("Reveal txid: {}", inscription_info.reveal_txid);
+    info!("Total fees: {}", inscription_info.total_fees);
+    Ok(())
+}
+
+pub fn wallet_mine_blocks(
     wallet_name: &str,
     blocks: u64,
     address_type: &AddressType,
     config: &Config,
 ) -> Result<(), Box<dyn Error>> {
     let wallet = Wallet::new(wallet_name, config)?;
-    let coinbase_recipient = wallet.new_address(address_type)?;
-    let client = create_rpc_client(config, None)?;
-    let _ = client.generate_to_address(blocks, &coinbase_recipient)?;
+    let coinbase_recipient = wallet.mine_blocks(address_type, blocks)?;
     info!("Mined {} blocks to {}", blocks, coinbase_recipient);
     Ok(())
 }

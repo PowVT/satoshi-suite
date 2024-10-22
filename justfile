@@ -11,8 +11,8 @@ get-block-height:
     RUST_LOG=info ./target/release/satoshi-suite get-block-height
 
 # Rescan the local blockchain for wallet related transactions. Use to import multisig wallet balances
-rescan-blockchain:
-    RUST_LOG=info ./target/release/satoshi-suite rescan-blockchain
+rescan-blockchain wallet_name="default_wallet":
+    RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} rescan-blockchain
 
 # broadcast a signed BTC transaction
 broadcast-tx tx_hex="tx_hex"  max_fee_rate="10000":
@@ -114,6 +114,26 @@ finalize-psbt-and-broadcast psbt="combined_psbt_hex":
 verify-signed-tx tx_hex="tx_hex":
     RUST_LOG=info ./target/release/satoshi-suite -t {{ tx_hex }} verify-signed-tx
 
+#########################
+### Ordinal Commands ####
+#########################
+
+# create ordinal wallet using ord
+new-ordinal-wallet:
+    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet create
+
+# get ordinals balance using ord
+get-ordinals-balance:
+    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet balance
+
+# get receive address for ordinal wallet using ord
+get-ordinal-receive-address:
+    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet receive
+
+# Inscribe an ordinal using satoshi-suite
+inscribe-ordinal wallet_name="default_wallet" :
+    RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} inscribe-ordinal
+
 ###################################
 # Build and Boostrapping Commands #
 ###################################
@@ -127,7 +147,7 @@ ord := "./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin
 
 alias b := build
 
-# bootstrap a testing environment
+# bootstrap a testing environment. Gives you 10 wallets (wallet1, wallet2, etc.) with 50 BTC each.
 bootstrap-env:
     RUST_LOG=info ./target/release/satoshi-suite bootstrap-env
 
@@ -159,8 +179,7 @@ bootstrap-btc:
 start-ord *ARGS:
     mkdir -p {{ ord_datadir }}
     @if lsof -ti :18443 >/dev/null 2>&1; then \
-        {{ ord }} --data-dir={{ord_datadir}} {{ ARGS }} server; \
-        echo "ord server on port 80 started."; \
+        {{ ord }} --data-dir={{ord_datadir}} --cookie-file={{bitcoin_datadir}}/.cookie {{ ARGS }} server; \
     else \
         echo "run just boostrap-btc before starting ord server."; \
     fi 

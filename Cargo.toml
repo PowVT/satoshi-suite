@@ -8,7 +8,7 @@ license = "MIT"
 members = [
     "bin/satoshi-suite/",
     "crates/client/",
-    "crates/config/",
+    "crates/config/", "crates/ordinals",
     "crates/signing/",
     "crates/utxo-selection/",
     "crates/wallet/",
@@ -22,15 +22,18 @@ resolver = "2"
 [workspace.dependencies]
 satoshi-suite-client = { path = "crates/client" }
 satoshi-suite-config = { path = "crates/config" }
+satoshi-suite-ordinals = { path = "crates/ordinals" }
 satoshi-suite-signing = { path = "crates/signing" }
 satoshi-suite-utxo-selection = { path = "crates/utxo-selection" }
 satoshi-suite-wallet = { path = "crates/wallet" }
 
-bitcoin = { version = "0.31.1", features = ["bitcoinconsensus"] }
+bitcoin = { version = "0.31.1", features = ["bitcoinconsensus", "rand-std"] }
 bitcoincore-rpc = "0.18.0"
+ciborium = "0.2"
 clap = { version = "4.4.18", features = ["derive"] }
 env_logger = "0.10.0"
 hex = "0.4"
 log = "0.4.20"
+ord = "0.21.0"
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0"

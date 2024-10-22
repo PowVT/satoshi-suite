@@ -2,10 +2,13 @@ use std::{error::Error, fmt};
 
 use log::info;
 
-use satoshi_suite_config::Config;
 use serde::Deserialize;
 
-use bitcoin::{Address, Amount, Network, OutPoint, Transaction, Txid};
+use bitcoin::key::{UntweakedKeypair, XOnlyPublicKey};
+use bitcoin::script::Builder as ScriptBuilder;
+use bitcoin::secp256k1::{rand, Secp256k1};
+use bitcoin::taproot::TaprootBuilder;
+use bitcoin::{Address, Amount, Network, OutPoint, ScriptBuf, Transaction, Txid};
 use bitcoincore_rpc::json::{
     AddressType, GetAddressInfoResult, GetBalancesResult, GetWalletInfoResult,
     ListUnspentQueryOptions, ListUnspentResultEntry, WalletProcessPsbtResult,
@@ -13,7 +16,14 @@ use bitcoincore_rpc::json::{
 use bitcoincore_rpc::jsonrpc::serde_json::{json, Value};
 use bitcoincore_rpc::{Client, Error as RpcError, RpcApi};
 
+use ord::Chain;
+
 use satoshi_suite_client::{create_rpc_client, ClientError};
+use satoshi_suite_config::Config;
+use satoshi_suite_ordinals::InscriptionData;
+use satoshi_suite_utxo_selection::{strat_handler, UTXOStrategy};
+
+use crate::{build_commit_transaction, build_reveal_transaction};
 
 #[derive(Debug)]
 pub enum WalletError {
@@ -65,6 +75,15 @@ impl From<RpcError> for WalletError {
 #[derive(Deserialize)]
 struct SendResult {
     txid: Txid,
+}
+
+#[derive(Debug)]
+pub struct InscriptionTransactions {
+    pub commit_tx: Transaction,
+    pub commit_txid: Txid,
+    pub reveal_tx: Transaction,
+    pub reveal_txid: Txid,
+    pub total_fees: u64,
 }
 
 pub struct Wallet {
@@ -173,5 +192,118 @@ impl Wallet {
         self.client
             .wallet_process_psbt(psbt, None, None, None)
             .map_err(WalletError::from)
+    }
+
+    pub fn mine_blocks(
+        &self,
+        address_type: &AddressType,
+        blocks: u64,
+    ) -> Result<Address, Box<dyn Error>> {
+        // require network to be regtest
+        if self.network != Network::Regtest {
+            return Err("Network must be regtest".into());
+        }
+
+        let coinbase_recipient = self.new_address(address_type)?;
+        let _ = self
+            .client
+            .generate_to_address(blocks, &coinbase_recipient)?;
+        Ok(coinbase_recipient)
+    }
+
+    pub fn inscribe_ordinal(
+        &self,
+        postage: &u64,
+        config: &Config,
+    ) -> Result<InscriptionTransactions, Box<dyn Error>> {
+        let secp = Secp256k1::new();
+
+        // Create inscription
+        let inscription =
+            InscriptionData::new(Chain::Regtest, "bin/satoshi-suite/public/happy-dog.png")?;
+        let reveal_script = inscription.reveal_script_as_scriptbuf(ScriptBuilder::new())?;
+
+        // Generate key pair for taproot
+        let key_pair = UntweakedKeypair::new(&secp, &mut rand::thread_rng());
+        let (public_key, _parity) = XOnlyPublicKey::from_keypair(&key_pair);
+
+        // Build taproot tree
+        let taproot_builder = TaprootBuilder::new()
+            .add_leaf(0, reveal_script.clone())
+            .expect("adding leaf should work");
+
+        let taproot_spend_info = taproot_builder
+            .finalize(&secp, public_key)
+            .expect("finalizing taproot builder should work");
+
+        // Create commit transaction output
+        let commit_script = ScriptBuf::new_p2tr(
+            &secp,
+            taproot_spend_info.internal_key(),
+            taproot_spend_info.merkle_root(),
+        );
+
+        // Get unspent outputs for funding
+        let utxos = self.list_all_unspent(None)?;
+        if utxos.is_empty() {
+            return Err("No unspent outputs available for inscription".into());
+        }
+
+        let amount = Amount::from_sat(*postage); // Inscription amount
+        let commit_fee = Amount::from_sat(20000); // Commit fee
+        let reveal_fee = Amount::from_sat(20000); // Reveal fee
+
+        // Select a single UTXO for the commit transaction
+        let selected_utxos = strat_handler(&utxos, amount, commit_fee, UTXOStrategy::SingleUTXO)?;
+
+        if selected_utxos.is_empty() {
+            return Err("No UTXOs selected for inscription".into());
+        }
+
+        // Build commit transaction
+        let (commit_tx, commit_vout) = build_commit_transaction(
+            &self,
+            &secp,
+            selected_utxos[0].clone(),
+            amount,
+            commit_fee,
+            commit_script,
+        )?;
+
+        // Create and sign reveal transaction
+        let reveal_tx = build_reveal_transaction(
+            &self,
+            &secp,
+            &key_pair,
+            &reveal_script,
+            &taproot_spend_info,
+            OutPoint {
+                txid: commit_tx.txid(),
+                vout: commit_vout,
+            },
+            amount,
+            reveal_fee,
+        )?;
+
+        // Calculate total fees
+        let total_fees = commit_fee.to_sat() + reveal_fee.to_sat();
+
+        // Send commit transaction
+        let commit_txid = self.client.send_raw_transaction(&commit_tx)?;
+
+        // mine 6 blocks to confirm the commit transaction
+        let miner = Wallet::new("miner", &config)?;
+        let _ = miner.mine_blocks(&AddressType::Bech32, 6)?;
+
+        // Send reveal transaction
+        let reveal_txid = self.client.send_raw_transaction(&reveal_tx)?;
+
+        Ok(InscriptionTransactions {
+            commit_tx,
+            commit_txid,
+            reveal_tx,
+            reveal_txid,
+            total_fees,
+        })
     }
 }

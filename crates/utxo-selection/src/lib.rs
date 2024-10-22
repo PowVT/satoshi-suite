@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, error::Error,fmt};
+use std::{collections::VecDeque, error::Error, fmt};
 
 use bitcoin::Amount;
 use bitcoincore_rpc::json::ListUnspentResultEntry;
@@ -36,6 +36,7 @@ pub enum UTXOStrategy {
     Fifo,
     LargestFirst,
     SmallestFirst,
+    SingleUTXO,
 }
 
 pub fn strat_handler(
@@ -54,6 +55,7 @@ pub fn strat_handler(
         UTXOStrategy::SmallestFirst => {
             select_utxos_smallest_first(utxos, target_amount, fee_amount)
         }
+        UTXOStrategy::SingleUTXO => select_single_utxo(utxos, target_amount, fee_amount),
     }
 }
 
@@ -130,6 +132,25 @@ fn select_utxos_smallest_first(
     sorted_utxos.sort_by(|a, b| a.amount.cmp(&b.amount));
 
     return select_utxos(sorted_utxos, target_amount, fee_amount);
+}
+
+fn select_single_utxo(
+    utxos: &[ListUnspentResultEntry],
+    target_amount: Amount,
+    fee_amount: Amount,
+) -> Result<Vec<ListUnspentResultEntry>, UtilsError> {
+    let total_needed = target_amount + fee_amount;
+
+    // Find the first UTXO that's large enough to cover both target amount and fee
+    let selected_utxo = utxos
+        .iter()
+        .find(|utxo| utxo.amount >= total_needed)
+        .cloned();
+
+    match selected_utxo {
+        Some(utxo) => Ok(vec![utxo]),
+        None => Err(UtilsError::InsufficientUTXOs),
+    }
 }
 
 fn select_utxos(
