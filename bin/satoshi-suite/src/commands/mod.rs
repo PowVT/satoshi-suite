@@ -64,7 +64,7 @@ pub fn handler(args: &Cli, config: &Config) -> Result<(), Box<dyn Error>> {
         Action::CombinePsbts => combine_psbts(&args.psbts, &config),
         Action::FinalizePsbt => finalize_psbt(&args.psbt_hex, &config),
         Action::FinalizePsbtAndBroadcast => finalize_psbt_and_broadcast(&args.psbt_hex, &config),
-        Action::InscribeOrdinal => inscribe_ordinal(&args.wallet_name, &args.postage, &config),
+        Action::InscribeOrdinal => inscribe_ordinal(&args.wallet_name, &args.postage, &args.file_path, &config),
         Action::MineBlocks => {
             wallet_mine_blocks(&args.wallet_name, args.blocks, &args.address_type, &config)
         }
@@ -342,10 +342,11 @@ pub fn finalize_psbt_and_broadcast(psbt: &str, config: &Config) -> Result<(), Bo
 pub fn inscribe_ordinal(
     wallet_name: &str,
     postage: &u64,
+    file_path: &str,
     config: &Config,
 ) -> Result<(), Box<dyn Error>> {
     let wallet = Wallet::new(wallet_name, config)?;
-    let inscription_info = wallet.inscribe_ordinal(postage, config)?;
+    let inscription_info = wallet.inscribe_ordinal(postage, file_path, config)?;
     info!("Commit txid: {}", inscription_info.commit_txid);
     info!("Reveal txid: {}", inscription_info.reveal_txid);
     info!("Total fees: {}", inscription_info.total_fees);

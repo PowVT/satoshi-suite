@@ -214,13 +214,14 @@ impl Wallet {
     pub fn inscribe_ordinal(
         &self,
         postage: &u64,
+        file_path: &str,
         config: &Config,
     ) -> Result<InscriptionTransactions, Box<dyn Error>> {
         let secp = Secp256k1::new();
 
         // Create inscription
         let inscription =
-            InscriptionData::new(Chain::Regtest, "bin/satoshi-suite/public/happy-dog.png")?;
+            InscriptionData::new(Chain::Regtest, file_path)?;
         let reveal_script = inscription.reveal_script_as_scriptbuf(ScriptBuilder::new())?;
 
         // Generate key pair for taproot

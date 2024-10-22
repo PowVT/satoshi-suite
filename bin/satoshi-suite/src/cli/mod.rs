@@ -135,6 +135,10 @@ pub struct Cli {
     #[arg(short = 'o', long, default_value = "0")]
     pub vout: u32,
 
+    /// File path
+    #[arg(short = 'f', long, default_value = "bin/satoshi-suite/public/happy-dog.png")]
+    pub file_path: String,
+
     #[command(subcommand)]
     pub action: Action,
 }
