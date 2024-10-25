@@ -9,11 +9,12 @@ license.workspace = true
 satoshi-suite-client.workspace = true
 satoshi-suite-config.workspace = true
 satoshi-suite-ordinals.workspace = true
-satoshi-suite-runes.workspace = true
+# satoshi-suite-runes.workspace = true
 satoshi-suite-utxo-selection.workspace = true
 
 bitcoin.workspace = true
 bitcoincore-rpc.workspace = true
+hex.workspace = true
 log.workspace = true
 ord.workspace = true
 ordinals.workspace = true

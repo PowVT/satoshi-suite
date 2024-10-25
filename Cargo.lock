@@ -2840,13 +2840,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "satoshi-suite-runes"
-version = "0.0.1"
-dependencies = [
- "ordinals 0.0.11",
-]
-
-[[package]]
 name = "satoshi-suite-signing"
 version = "0.0.1"
 dependencies = [
@@ -2874,13 +2867,13 @@ version = "0.0.1"
 dependencies = [
  "bitcoin 0.31.2",
  "bitcoincore-rpc 0.18.0",
+ "hex",
  "log",
  "ord",
  "ordinals 0.0.11",
  "satoshi-suite-client",
  "satoshi-suite-config",
  "satoshi-suite-ordinals",
- "satoshi-suite-runes",
  "satoshi-suite-utxo-selection",
  "serde",
  "serde_json",

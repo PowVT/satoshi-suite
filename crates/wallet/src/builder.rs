@@ -90,7 +90,8 @@ pub fn build_reveal_transaction(
         .ok_or("Insufficient amount for reveal transaction")?;
 
     let sequence = if is_rune {
-        Sequence::from_height(Runestone::COMMIT_CONFIRMATIONS - 1)
+        // Sequence::from_height(Runestone::COMMIT_CONFIRMATIONS - 1)
+        Sequence::ENABLE_RBF_NO_LOCKTIME
     } else {
         Sequence::ENABLE_RBF_NO_LOCKTIME
     };

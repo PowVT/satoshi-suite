@@ -18,6 +18,7 @@ use bitcoincore_rpc::jsonrpc::serde_json::{json, Value};
 use bitcoincore_rpc::{Client, Error as RpcError, RawTx, RpcApi};
 
 use ord::Chain;
+
 use ordinals::{Etching, Rune, Runestone};
 
 use satoshi_suite_client::{create_rpc_client, ClientError};
@@ -339,25 +340,24 @@ impl Wallet {
             pointer: None,
         };
 
-        println!("Created runestone: {:#?}", runestone);
+        // Get the encoded runestone - already includes OP_RETURN and OP_PUSHNUM_13
+        let runestone_bytes = runestone.encipher().to_bytes();
+        println!("Encoded runestone: {}", hex::encode(&runestone_bytes));
 
-        // Create the reveal script
+        // Create output scripts - use the bytes directly since they already have OP_RETURN OP_PUSHNUM_13
+        let runestone_script = ScriptBuf::from_bytes(runestone_bytes.clone());
+
+        // For reveal script, embed the complete runestone data inside OP_FALSE OP_IF
         let reveal_script = ScriptBuilder::new()
             .push_opcode(opcodes::OP_FALSE)
             .push_opcode(opcodes::all::OP_IF)
-            .push_slice({
-                let mut buf = PushBytesBuf::new(); // Create a new PushBytesBuf
-                buf.extend_from_slice(&runestone.encipher().to_bytes())?; // Extend it with the byte slice
-                buf
-            })            .push_opcode(opcodes::all::OP_ENDIF)
+            .push_slice(PushBytesBuf::try_from(runestone_bytes).map_err(|_| "Runestone bytes should fit in PushBytesBuf")?)
+            .push_opcode(opcodes::all::OP_ENDIF)
             .push_slice(public_key.serialize())
             .push_opcode(opcodes::all::OP_CHECKSIG)
             .into_script();
 
-        println!("Reveal script hex: {}", reveal_script.as_bytes().to_vec().to_hex_string(bitcoin::hex::Case::Lower));
-
-        let encoded_runestone = runestone.encipher();
-        println!("Encoded runestone hex: {}", encoded_runestone.to_bytes().to_vec().to_hex_string(bitcoin::hex::Case::Lower));
+        println!("Reveal script: {}", hex::encode(reveal_script.as_bytes()));
 
         // Create the destination script (P2TR)
         let destination_script = ScriptBuf::new_p2tr(
@@ -415,7 +415,6 @@ impl Wallet {
             commit_script,
         )?;
 
-        // Prepare additional outputs
         let mut reveal_outputs = Vec::new();
 
         // Add premine output if it exists
@@ -426,9 +425,9 @@ impl Wallet {
             });
         }
 
-        // Add runestone output
+        // Add runestone output using runestone_script we created above
         reveal_outputs.push(TxOut {
-            script_pubkey: ScriptBuf::from_bytes(runestone.encipher().to_bytes()),
+            script_pubkey: runestone_script,
             value: Amount::from_sat(0),
         });
 
@@ -462,11 +461,11 @@ impl Wallet {
         // // Send reveal transaction
         // let reveal_txid = self.client.send_raw_transaction(&reveal_tx)?;
 
-    println!("Run these commands:");
-    println!("1. {:?}", bitcoin::consensus::serialize(&commit_tx).raw_hex());
-    println!("2. bitcoin-cli generatetoaddress 6 <your_address>");
-    println!("3. ord index info");
-    println!("4. {:?}", bitcoin::consensus::serialize(&reveal_tx).raw_hex());
+        println!("Run these commands:");
+        println!("1. {:?}", bitcoin::consensus::serialize(&commit_tx).raw_hex());
+        println!("2. bitcoin-cli generatetoaddress 6 <your_address>");
+        println!("3. ord index info");
+        println!("4. {:?}", bitcoin::consensus::serialize(&reveal_tx).raw_hex());
 
         Ok(())
     }

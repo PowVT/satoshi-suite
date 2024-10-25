@@ -138,6 +138,32 @@ inscribe-ordinal wallet_name="default_wallet" :
 etch-rune wallet_name="default_wallet":
     RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} etch-rune
 
+# Get ord index info
+ord-info:
+    {{ ord }} \
+        --data-dir={{ord_datadir}} \
+        --cookie-file={{bitcoin_datadir}}/.cookie \
+        index info
+
+# List runes
+ord-runes:
+    {{ ord }} \
+        --data-dir={{ord_datadir}} \
+        --cookie-file={{bitcoin_datadir}}/.cookie \
+        runes
+
+# Get transaction details
+tx-info txid:
+    {{ bitcoin_cli }} getrawtransaction {{ txid }} 1
+
+# Reindex ord database
+reindex-ord:
+    {{ ord }} --index-runes --commit-interval=1 --regtest index
+
+# Follow ord logs
+ord-logs:
+    tail -f {{ ord_datadir }}/regtest/ord.log
+
 ###################################
 # Build and Boostrapping Commands #
 ###################################
@@ -180,13 +206,20 @@ bootstrap-btc:
     just start-bitcoind
 
 # start the Ordinal server
-start-ord *ARGS:
+start-ord-verbose *ARGS:
     mkdir -p {{ ord_datadir }}
     @if lsof -ti :18443 >/dev/null 2>&1; then \
-        {{ ord }} --data-dir={{ord_datadir}} --index-runes --index-sats --cookie-file={{bitcoin_datadir}}/.cookie {{ ARGS }} server; \
+        RUST_LOG=debug {{ ord }} \
+            --data-dir={{ord_datadir}} \
+            --index-runes \
+            --index-sats \
+            --index-transactions \
+            --commit-interval=1 \
+            {{ ARGS }} \
+            server; \
     else \
-        echo "run just boostrap-btc before starting ord server."; \
-    fi 
+        echo "run just bootstrap-btc before starting ord server."; \
+    fi
 
 # kill the Ordinal server
 stop-ord:
