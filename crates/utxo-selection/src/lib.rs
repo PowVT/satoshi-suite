@@ -91,7 +91,7 @@ fn select_utxos_branch_and_bound(
                 if !current_selection.contains(utxo) {
                     let mut new_selection = current_selection.clone();
                     new_selection.push(utxo.clone());
-                    let new_total = current_total + utxo.amount;
+                    let new_total = current_total + Amount::from_sat(utxo.amount.to_sat());
                     queue.push_back((new_selection, new_total));
                 }
             }
@@ -144,7 +144,7 @@ fn select_single_utxo(
     // Find the first UTXO that's large enough to cover both target amount and fee
     let selected_utxo = utxos
         .iter()
-        .find(|utxo| utxo.amount >= total_needed)
+        .find(|utxo| Amount::from_sat(utxo.amount.to_sat()) >= total_needed)
         .cloned();
 
     match selected_utxo {
@@ -163,7 +163,7 @@ fn select_utxos(
 
     for utxo in sorted_utxos.iter() {
         selected_utxos.push(utxo.clone());
-        total_amount += utxo.amount;
+        total_amount += Amount::from_sat(utxo.amount.to_sat());
 
         if total_amount >= target_amount + fee_amount {
             return Ok(selected_utxos);

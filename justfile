@@ -134,6 +134,10 @@ get-ordinal-receive-address:
 inscribe-ordinal wallet_name="default_wallet" :
     RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} inscribe-ordinal
 
+# Etch a rune using satoshi-suite
+etch-rune wallet_name="default_wallet":
+    RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} etch-rune
+
 ###################################
 # Build and Boostrapping Commands #
 ###################################
@@ -179,7 +183,7 @@ bootstrap-btc:
 start-ord *ARGS:
     mkdir -p {{ ord_datadir }}
     @if lsof -ti :18443 >/dev/null 2>&1; then \
-        {{ ord }} --data-dir={{ord_datadir}} --cookie-file={{bitcoin_datadir}}/.cookie {{ ARGS }} server; \
+        {{ ord }} --data-dir={{ord_datadir}} --index-runes --index-sats --cookie-file={{bitcoin_datadir}}/.cookie {{ ARGS }} server; \
     else \
         echo "run just boostrap-btc before starting ord server."; \
     fi 

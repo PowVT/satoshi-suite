@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use bitcoin::absolute::LockTime;
-use bitcoin::key::{TapTweak, UntweakedKeypair};
+use bitcoin::key::UntweakedKeypair;
 use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::taproot::{LeafVersion, TaprootSpendInfo};
@@ -10,6 +10,7 @@ use bitcoin::{
     Amount, OutPoint, ScriptBuf, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 use bitcoincore_rpc::json::{AddressType, ListUnspentResultEntry};
+use ordinals::Runestone;
 
 use crate::Wallet;
 
@@ -75,13 +76,37 @@ pub fn build_reveal_transaction(
     commit_outpoint: OutPoint,
     amount: Amount,
     fee_amount: Amount,
+    is_rune: bool,
+    additional_outputs: Vec<TxOut>,
 ) -> Result<Transaction, Box<dyn Error>> {
-    let reveal_amount = Amount::from_sat(
-        amount
-            .to_sat()
-            .checked_sub(fee_amount.to_sat())
-            .ok_or("Insufficient amount for reveal transaction fee")?,
-    );
+    // Calculate the total amount needed for additional outputs
+    let additional_output_total: u64 = additional_outputs.iter().map(|output| output.value.to_sat()).sum();
+
+    // Calculate the remaining amount after subtracting fees and additional outputs
+    let remaining_amount = amount
+        .to_sat()
+        .checked_sub(fee_amount.to_sat())
+        .and_then(|amt| amt.checked_sub(additional_output_total))
+        .ok_or("Insufficient amount for reveal transaction")?;
+
+    let sequence = if is_rune {
+        Sequence::from_height(Runestone::COMMIT_CONFIRMATIONS - 1)
+    } else {
+        Sequence::ENABLE_RBF_NO_LOCKTIME
+    };
+
+    let mut outputs = Vec::new();
+
+    if remaining_amount > 0 {
+        outputs.push(TxOut {
+            value: Amount::from_sat(remaining_amount),
+            script_pubkey: wallet.new_address(&AddressType::Bech32m)?.script_pubkey(),
+        });
+    }
+
+    outputs.extend(additional_outputs);
+
+    println!("Outputs: {:?}", outputs);
 
     let mut reveal_tx = Transaction {
         version: Version::TWO,
@@ -89,44 +114,47 @@ pub fn build_reveal_transaction(
         input: vec![TxIn {
             previous_output: commit_outpoint,
             script_sig: ScriptBuf::default(),
-            sequence: Sequence::ENABLE_RBF_NO_LOCKTIME,
+            sequence,
             witness: Witness::default(),
         }],
-        output: vec![TxOut {
-            value: reveal_amount,
-            script_pubkey: wallet.new_address(&AddressType::Bech32m)?.script_pubkey(),
-        }],
+        output: outputs,
+    };
+
+    // Create the input's previous output
+    let prev_tx_out = TxOut {
+        value: amount,
+        script_pubkey: ScriptBuf::new_p2tr(
+            secp,
+            taproot_spend_info.internal_key(),
+            taproot_spend_info.merkle_root(),
+        ),
     };
 
     // Sign the reveal transaction
-    let mut sighash_cache = SighashCache::new(&reveal_tx);
+    let mut sighash_cache = SighashCache::new(&mut reveal_tx);
     let leaf_hash = TapLeafHash::from_script(reveal_script, LeafVersion::TapScript);
     let sighash = sighash_cache
         .taproot_script_spend_signature_hash(
             0,
-            &Prevouts::All(&[TxOut {
-                value: amount, // Keep as Amount
-                script_pubkey: ScriptBuf::new_p2tr(
-                    secp,
-                    taproot_spend_info.internal_key(),
-                    taproot_spend_info.merkle_root(),
-                ),
-            }]),
+            &Prevouts::All(&[prev_tx_out]),
             leaf_hash,
             TapSighashType::Default,
         )
         .expect("Failed to construct sighash");
 
+    // Use the untweaked keypair for signing
     let signature = secp.sign_schnorr(
         &Message::from_digest_slice(sighash.as_ref())?,
-        &key_pair
-            .tap_tweak(secp, taproot_spend_info.merkle_root())
-            .to_inner(),
+        key_pair,
     );
 
-    reveal_tx.input[0].witness.push(signature.as_ref().to_vec());
-    reveal_tx.input[0].witness.push(reveal_script.clone());
-    reveal_tx.input[0].witness.push(
+    let witness = sighash_cache
+        .witness_mut(0)
+        .expect("getting mutable witness reference should work");
+
+    witness.push(signature.as_ref());
+    witness.push(reveal_script);
+    witness.push(
         &taproot_spend_info
             .control_block(&(reveal_script.clone(), LeafVersion::TapScript))
             .expect("Failed to create control block")

@@ -172,6 +172,7 @@ pub enum Action {
     FinalizePsbt,
     FinalizePsbtAndBroadcast,
     InscribeOrdinal,
+    EtchRune,
     BroadcastTx,
 }
 

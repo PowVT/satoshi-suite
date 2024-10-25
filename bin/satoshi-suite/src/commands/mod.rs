@@ -2,6 +2,7 @@ use std::{error::Error, str::FromStr};
 
 use log::info;
 
+use ordinals::{Etching, Rune, Runestone, Terms};
 use serde_json::json;
 
 use bitcoin::{Address, Txid};
@@ -65,6 +66,7 @@ pub fn handler(args: &Cli, config: &Config) -> Result<(), Box<dyn Error>> {
         Action::FinalizePsbt => finalize_psbt(&args.psbt_hex, &config),
         Action::FinalizePsbtAndBroadcast => finalize_psbt_and_broadcast(&args.psbt_hex, &config),
         Action::InscribeOrdinal => inscribe_ordinal(&args.wallet_name, &args.postage, &args.file_path, &config),
+        Action::EtchRune => etch_rune(&args.wallet_name, &config),
         Action::MineBlocks => {
             wallet_mine_blocks(&args.wallet_name, args.blocks, &args.address_type, &config)
         }
@@ -201,7 +203,7 @@ pub fn get_tx(wallet_name: &str, txid: &str, config: &Config) -> Result<(), Box<
     let client = create_rpc_client(config, Some(wallet_name))?;
     let txid = Txid::from_str(txid)?;
     let tx = client.get_transaction(&txid, None)?;
-    info!("{:#?}", tx);
+    info!("{:?}", tx);
     Ok(())
 }
 
@@ -350,6 +352,75 @@ pub fn inscribe_ordinal(
     info!("Commit txid: {}", inscription_info.commit_txid);
     info!("Reveal txid: {}", inscription_info.reveal_txid);
     info!("Total fees: {}", inscription_info.total_fees);
+    Ok(())
+}
+
+pub fn etch_rune(wallet_name: &str, config: &Config) -> Result<(), Box<dyn Error>> {
+    let wallet = Wallet::new(wallet_name, config)?;
+
+    let rune = "ZZZZZZZZZZZZZ".parse::<Rune>().unwrap();
+    
+    // Add validation checks
+    if rune.is_reserved() {
+        return Err(format!("rune `{rune}` is reserved").into());
+    }
+
+    // Check divisibility
+    let divisibility = 2;
+    if divisibility > 38 { // Etching::MAX_DIVISIBILITY
+        return Err("divisibility must be less than or equal 38".into());
+    }
+
+    // Create the etching with proper supply calculations
+    let premine = 100000;
+    let terms_amount = 10000;
+    let terms_cap = 90;
+    
+    // Validate supply
+    let supply = premine + (terms_cap as u128 * terms_amount as u128);
+    if supply == 0 {
+        return Err("supply must be greater than zero".into());
+    }
+
+    let etching = Etching {
+        divisibility: Some(divisibility),
+        premine: Some(premine),
+        rune: Some(rune),
+        spacers: None,
+        symbol: Some('$'),
+        terms: Some(Terms {
+            amount: Some(terms_amount),
+            cap: Some(terms_cap),
+            height: (None, None),
+            offset: (None, None),
+        }),
+        turbo: true,
+    };
+
+    // Add reveal height check
+    let current_height = u32::try_from(wallet.client.get_block_count()?).unwrap();
+    let reveal_height = current_height + u32::from(Runestone::COMMIT_CONFIRMATIONS);
+    
+    // Ensure reveal height is valid
+    // let first_rune_height = Rune::first_rune_height();
+    // if reveal_height < first_rune_height {
+    //     return Err(format!(
+    //         "rune reveal height below rune activation height: {reveal_height} < {first_rune_height}"
+    //     ).into());
+    // }
+
+    // Additional validation for terms
+    if let Some(ref terms) = etching.terms {
+        if terms.cap == Some(0) {
+            return Err("terms.cap must be greater than zero".into());
+        }
+        if terms.amount.unwrap_or(0) == 0 {
+            return Err("terms.amount must be greater than zero".into());
+        }
+    }
+
+    wallet.etch_rune(&config, etching)?;
+    //info!("Etching result: {:#?}", result);
     Ok(())
 }
 

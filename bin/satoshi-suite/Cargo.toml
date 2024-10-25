@@ -20,7 +20,7 @@ clap.workspace = true
 env_logger.workspace = true
 hex.workspace = true
 log.workspace = true
-ord.workspace = true
+ordinals.workspace = true
 serde_json.workspace = true
 
 [[bin]]
