@@ -54,6 +54,8 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 
 ## Available Commands
 
+> View all possible commands and their inputs with `just -l`
+
 ### Wallet Commands
 
 | Command | Inputs | Description |
@@ -84,12 +86,21 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 | Command | Inputs | Description |
 |---------|--------|-------------|
 | `just start-bitcoind` | - | Start a local Regtest Bitcoin network |
+| `just start-ord` | - | Start the ord server. View the ord explorer at `http://localhost:80`|
 | `just kill-all` | - | Terminate all services and clear cached data |
 | `just mine-blocks` | `<wallet_name> <number_of_blocks_to_mine>` | Mine blocks on the Regtest network |
 | `just get-tx` | `<tx_hash>` | Get information about a specific transaction |
 | `just get-tx-out` | `<tx_hash> <vout_index> <num_confirmations>` | Get transaction outputs |
 | `just broadcast-tx` | `<signed_tx_hash> <max-fee-rate>` | Broadcast a signed transaction |
 | `just get-spendable-balance` | `<address>` | Sum all UTXO amounts with 6+ confirmations |
+| `just bootstrap-env` | - | Init a fresh bitcoin test environment with ten wallets and 50 BTC in each wallet |
+
+### Ordinal Commands
+
+| Command | Inputs | Description |
+|---------|--------|-------------|
+| `just inscribe-ordinal` | `<wallet_name>` | Inscribe a new ordinal, using the pre-existing inscription data |
+| `just etch-rune` | `<wallet_name>` | Etch a rune, using the pre-existing inscription and runestone data |
 
 ## UTXO Selection Strategies
 
