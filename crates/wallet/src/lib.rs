@@ -6,3 +6,6 @@ pub use multisig_wallet::*;
 
 mod builder;
 pub use builder::*;
+
+mod taproot;
+pub use taproot::*;
