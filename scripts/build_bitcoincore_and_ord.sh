@@ -6,6 +6,8 @@ set -e
 BITCOIN_REPO="git@github.com:bitcoin/bitcoin.git"
 ORD_REPO="git@github.com:ordinals/ord.git"
 BITCOIN_VERSION="v27.0"
+ORD_VERSION="0.21.0"
+
 
 if [ ! -d "bitcoin-core" ]; then
     echo "Building and setting up Bitcoin Core..."
@@ -25,6 +27,7 @@ if [ ! -d "ord" ]; then
     git clone $ORD_REPO ord
 
     pushd ord
+    git checkout $ORD_VERSION
     cargo build --release
     popd
 fi
