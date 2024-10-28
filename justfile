@@ -119,20 +119,32 @@ verify-signed-tx tx_hex="tx_hex":
 #########################
 
 # create ordinal wallet using ord
-new-ordinal-wallet:
-    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet create
+new-ord-wallet wallet_name="default_wallet":
+    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet --name {{ wallet_name }} create
 
 # get ordinals balance using ord
-get-ordinals-balance:
-    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet balance
+get-ord-balance wallet_name="default_wallet":
+    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet --name {{ wallet_name }} balance
 
 # get receive address for ordinal wallet using ord
-get-ordinal-receive-address:
-    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet receive
+get-ord-receive-address wallet_name="default_wallet":
+    RUST_LOG=info ./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password --cookie-file={{ bitcoin_datadir }}/.cookie wallet --name {{ wallet_name }} receive
 
 # Inscribe an ordinal using satoshi-suite
 inscribe-ordinal wallet_name="default_wallet" :
     RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} inscribe-ordinal
+
+# Etch a rune using satoshi-suite
+etch-rune wallet_name="default_wallet":
+    RUST_LOG=info ./target/release/satoshi-suite -w {{ wallet_name }} etch-rune
+
+# List all runes
+ord-runes:
+    {{ ord }} \
+        --data-dir={{ord_datadir}} \
+        --index-runes \
+        --cookie-file={{bitcoin_datadir}}/.cookie \
+        runes
 
 ###################################
 # Build and Boostrapping Commands #
@@ -179,10 +191,18 @@ bootstrap-btc:
 start-ord *ARGS:
     mkdir -p {{ ord_datadir }}
     @if lsof -ti :18443 >/dev/null 2>&1; then \
-        {{ ord }} --data-dir={{ord_datadir}} --cookie-file={{bitcoin_datadir}}/.cookie {{ ARGS }} server; \
+        {{ ord }} \
+            --data-dir={{ord_datadir}} \
+            --index-addresses \
+            --index-runes \
+            --index-sats \
+            --index-transactions \
+            --commit-interval=1 \
+            {{ ARGS }} \
+            server; \
     else \
-        echo "run just boostrap-btc before starting ord server."; \
-    fi 
+        echo "run just bootstrap-btc before starting ord server."; \
+    fi
 
 # kill the Ordinal server
 stop-ord:
