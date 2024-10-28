@@ -10,7 +10,6 @@ members = [
     "crates/client/",
     "crates/config/",
     "crates/ordinals",
-    # "crates/runes",
     "crates/signing/",
     "crates/utxo-selection/",
     "crates/wallet/",
@@ -25,7 +24,6 @@ resolver = "2"
 satoshi-suite-client = { path = "crates/client" }
 satoshi-suite-config = { path = "crates/config" }
 satoshi-suite-ordinals = { path = "crates/ordinals" }
-# satoshi-suite-runes = { path = "crates/runes" }
 satoshi-suite-signing = { path = "crates/signing" }
 satoshi-suite-utxo-selection = { path = "crates/utxo-selection" }
 satoshi-suite-wallet = { path = "crates/wallet" }
