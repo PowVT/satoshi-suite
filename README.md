@@ -54,9 +54,9 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 
 ## Available Commands
 
-> View all possible commands and their inputs using `just help` and `just -l`.
+**View all possible commands and their inputs using `just help` and `just -l`.**
 
-### Wallet Commands
+### Wallet
 
 | Command | Inputs | Description |
 |---------|--------|-------------|
@@ -69,7 +69,7 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 | `just sign-tx` | `<wallet_name> <recipient_address> <amount_in_btc> <fee_amount_in_btc> <utxo_selection_strategy>` | Sign a transaction |
 | `just send-btc` | `<wallet_name> <recipient_address> <amount_in_btc>` | Create, sign, and broadcast a BTC transaction |
 
-### Multisig Commands
+### Multisig
 
 | Command | Inputs | Description |
 |---------|--------|-------------|
@@ -81,7 +81,7 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 | `just finalize-psbt` | `<combined_psbt_hex>` | Finalize a fully signed PSBT |
 | `just finalize-psbt-and-broadcast` | `<combined_psbt_hex>` | Finalize and broadcast a fully signed PSBT |
 
-### Network Commands
+### Network
 
 | Command | Inputs | Description |
 |---------|--------|-------------|
@@ -95,7 +95,7 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 | `just get-spendable-balance` | `<address>` | Sum all UTXO amounts with 6+ confirmations |
 | `just bootstrap-env` | - | Init a fresh bitcoin test environment with ten wallets and 50 BTC in each wallet |
 
-### Ordinal Commands
+### Ordinal
 
 | Command | Inputs | Description |
 |---------|--------|-------------|
