@@ -16,11 +16,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
 
     let config = Config::new(
-        args.network,
-        args.rpc_url.clone(),
-        args.rpc_username.clone(),
-        args.rpc_password.clone(),
-        args.create_wallets,
+        args.options.network,
+        args.options.rpc_url.clone(),
+        args.options.rpc_username.clone(),
+        args.options.rpc_password.clone(),
+        args.options.create_wallets,
     );
 
     handler(&args, &config)

@@ -19,61 +19,97 @@ use satoshi_suite_wallet::{
 use crate::cli::{Action, Cli};
 
 pub fn handler(args: &Cli, config: &Config) -> Result<(), Box<dyn Error>> {
-    match args.action {
-        Action::BootstrapEnv => bootstrap_env(&args.address_type, &config),
-        Action::GetBlockHeight => get_block_height(&config),
-        Action::NewWallet => new_wallet(&args.wallet_name, &config),
-        Action::NewMultisig => new_multisig_wallet(
-            &args.wallet_names,
-            args.nrequired,
-            &args.multisig_name,
-            &config,
+    match &args.action {
+        Action::BootstrapEnv { address_type } => bootstrap_env(&address_type, config),
+        Action::GetBlockHeight => get_block_height(config),
+        Action::NewWallet { wallet_name } => new_wallet(wallet_name.as_str(), config),
+        Action::NewMultisig {
+            wallet_names,
+            nrequired,
+            multisig_name,
+        } => new_multisig_wallet(&wallet_names, *nrequired, multisig_name.as_str(), config),
+        Action::GetWalletInfo { wallet_name } => get_wallet_info(wallet_name.as_str(), config),
+        Action::ListDescriptors { wallet_name } => list_descriptors(wallet_name.as_str(), config),
+        Action::GetNewAddress {
+            wallet_name,
+            address_type,
+        } => get_new_address(wallet_name.as_str(), &address_type, config),
+        Action::GetAddressInfo {
+            wallet_name,
+            address,
+        } => get_address_info(wallet_name.as_str(), &address, config),
+        Action::DeriveAddresses {
+            descriptor,
+            start,
+            end,
+        } => derive_addresses(descriptor.as_str(), *start, *end, config),
+        Action::RescanBlockchain { start } => rescan_blockchain(*start, config),
+        Action::GetBalance { wallet_name } => get_balance(wallet_name.as_str(), config),
+        Action::ListUnspent { wallet_name } => list_unspent(wallet_name.as_str(), config),
+        Action::GetTx { wallet_name, txid } => get_tx(wallet_name.as_str(), &txid, config),
+        Action::GetTxOut { txid, vout } => get_tx_out(&txid, *vout, config),
+        Action::SendBtc {
+            wallet_name,
+            recipient,
+            amount,
+        } => send_btc(wallet_name.as_str(), &recipient, *amount, config),
+        Action::SignTx {
+            wallet_name,
+            recipient,
+            amount,
+            fee_amount,
+            utxo_strat,
+        } => sign_transaction(
+            wallet_name.as_str(),
+            &recipient,
+            *amount,
+            *fee_amount,
+            *utxo_strat,
+            config,
         ),
-        Action::GetWalletInfo => get_wallet_info(&args.wallet_name, &config),
-        Action::ListDescriptors => list_descriptors(&args.wallet_name, &config),
-        Action::GetNewAddress => get_new_address(&args.wallet_name, &args.address_type, &config),
-        Action::GetAddressInfo => get_address_info(&args.wallet_name, &args.address, &config),
-        Action::DeriveAddresses => {
-            derive_addresses(&args.descriptor, args.start, args.end, &config)
-        }
-        Action::RescanBlockchain => rescan_blockchain(args.start, &config),
-        Action::GetBalance => get_balance(&args.wallet_name, &config),
-        Action::ListUnspent => list_unspent(&args.wallet_name, &config),
-        Action::GetTx => get_tx(&args.wallet_name, &args.txid, &config),
-        Action::GetTxOut => get_tx_out(&args.txid, args.vout, &config),
-        Action::SendBtc => send_btc(&args.wallet_name, &args.recipient, args.amount, &config),
-        Action::SignTx => sign_transaction(
-            &args.wallet_name,
-            &args.recipient,
-            args.amount,
-            args.fee_amount,
-            args.utxo_strat,
-            &config,
+        Action::DecodeRawTx { tx_hex } => decode_raw_tx(tx_hex.as_str(), config),
+        Action::VerifySignedTx { tx_hex } => verify_signed_transaction(tx_hex.as_str(), config),
+        Action::BroadcastTx { tx_hex } => broadcast_tx(tx_hex.as_str(), config),
+        Action::CreatePsbt {
+            wallet_name,
+            recipient,
+            amount,
+            fee_amount,
+            utxo_strat,
+        } => create_psbt(
+            wallet_name.as_str(),
+            &recipient,
+            *amount,
+            *fee_amount,
+            *utxo_strat,
+            config,
         ),
-        Action::DecodeRawTx => decode_raw_tx(&args.tx_hex, &config),
-        Action::VerifySignedTx => verify_signed_transaction(&args.tx_hex, &config),
-        Action::BroadcastTx => broadcast_tx(&args.tx_hex, &config),
-        Action::CreatePsbt => create_psbt(
-            &args.wallet_name,
-            &args.recipient,
-            args.amount,
-            args.fee_amount,
-            args.utxo_strat,
-            &config,
-        ),
-        Action::ProcessPsbt => process_psbt(&args.wallet_name, &args.psbt_hex, &config),
-        Action::DecodePsbt => decode_psbt(&args.psbt_hex, &config),
-        Action::AnalyzePsbt => analyze_psbt(&args.psbt_hex, &config),
-        Action::CombinePsbts => combine_psbts(&args.psbts, &config),
-        Action::FinalizePsbt => finalize_psbt(&args.psbt_hex, &config),
-        Action::FinalizePsbtAndBroadcast => finalize_psbt_and_broadcast(&args.psbt_hex, &config),
-        Action::InscribeOrdinal => {
-            inscribe_ordinal(&args.wallet_name, &args.postage, &args.file_path, &config)
+        Action::ProcessPsbt {
+            wallet_name,
+            psbt_hex,
+        } => process_psbt(wallet_name.as_str(), psbt_hex.as_str(), config),
+        Action::DecodePsbt { psbt_hex } => decode_psbt(psbt_hex.as_str(), config),
+        Action::AnalyzePsbt { psbt_hex } => analyze_psbt(psbt_hex.as_str(), config),
+        Action::CombinePsbts { psbts } => combine_psbts(&psbts, config),
+        Action::FinalizePsbt { psbt_hex } => finalize_psbt(psbt_hex.as_str(), config),
+        Action::FinalizePsbtAndBroadcast { psbt_hex } => {
+            finalize_psbt_and_broadcast(&psbt_hex, config)
         }
-        Action::EtchRune => etch_rune(&args.wallet_name, &args.postage, &args.file_path, &config),
-        Action::MineBlocks => {
-            wallet_mine_blocks(&args.wallet_name, args.blocks, &args.address_type, &config)
-        }
+        Action::InscribeOrdinal {
+            wallet_name,
+            postage,
+            file_path,
+        } => inscribe_ordinal(wallet_name.as_str(), &postage, &file_path, config),
+        Action::EtchRune {
+            wallet_name,
+            postage,
+            file_path,
+        } => etch_rune(wallet_name.as_str(), &postage, &file_path, config),
+        Action::MineBlocks {
+            wallet_name,
+            blocks,
+            address_type,
+        } => wallet_mine_blocks(wallet_name.as_str(), *blocks, &address_type, config),
     }
 }
 

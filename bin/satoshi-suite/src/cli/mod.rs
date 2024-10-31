@@ -1,189 +1,318 @@
 use bitcoin::amount::Denomination::Bitcoin;
 use bitcoin::{Amount, Network};
 use bitcoincore_rpc::json::AddressType;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 use satoshi_suite_utxo_selection::UTXOStrategy;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
+#[command(name = "satoshi-suite")]
+#[command(about = "Bitcoin wallet and transaction management suite", long_about = None)]
 pub struct Cli {
-    /// Network
-    #[arg(long, value_parser = parse_network_type, default_value = "regtest")]
-    pub network: Network,
-
-    /// RPC URL
-    #[arg(long, default_value = "http://127.0.0.1")]
-    pub rpc_url: String,
-
-    /// RPC Username
-    #[arg(long, default_value = "user")]
-    pub rpc_username: String,
-
-    /// RPC Password
-    #[arg(long, default_value = "password")]
-    pub rpc_password: String,
-
-    /// Create wallets
-    #[arg(long, default_value = "true")]
-    pub create_wallets: bool,
-
-    /// Name of the wallet
-    #[arg(short = 'w', long, default_value = "default_wallet")]
-    pub wallet_name: String,
-
-    /// Name of the multisig wallet
-    #[arg(short = 'm', long, default_value = "multisig_wallet")]
-    pub multisig_name: String,
-
-    /// list of wallet names
-    #[arg(
-        short = 'v',
-        long,
-        value_delimiter = ',',
-        default_value = "default_wallet1,default_wallet2,default_wallet3"
-    )]
-    pub wallet_names: Vec<String>,
-
-    /// required number of signatures for multisig
-    #[arg(short = 'n', long, default_value = "2")]
-    pub nrequired: u32,
-
-    /// Address type
-    #[arg(short='z', long, value_parser = parse_address_type, default_value = "bech32")]
-    pub address_type: AddressType,
-
-    /// Number of blocks to mine
-    #[arg(short = 'b', long, default_value = "1")]
-    pub blocks: u64,
-
-    /// Transaction recipient address
-    #[arg(
-        short = 'r',
-        long,
-        default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
-    )]
-    pub recipient: String,
-
-    /// Wallet address
-    #[arg(
-        short = 'a',
-        long,
-        default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
-    )]
-    pub address: String,
-
-    /// Wallet descriptor
-    #[arg(short = 'd', long, default_value = "descriptor-here")]
-    pub descriptor: String,
-
-    /// Start index to derive
-    #[arg(short = 's', long, default_value = "0")]
-    pub start: u32,
-
-    /// End index to derive
-    #[arg(short = 'e', long, default_value = "2")]
-    pub end: u32,
-
-    /// Transaction amount
-    #[arg(short='x', long, value_parser = parse_amount, default_value = "49.9")]
-    pub amount: Amount,
-
-    /// Transaction fee
-    #[arg(short='f', long, value_parser = parse_amount, default_value = "0.1")]
-    pub fee_amount: Amount,
-
-    /// Postage
-    #[arg(short = 'p', long, default_value = "50000")]
-    pub postage: u64,
-
-    /// Max transaction fee rate in sat/vB
-    #[arg(short = 'u', long, default_value = "0.1")]
-    pub max_fee_rate: f64,
-
-    /// UTXO selection strategy
-    #[arg(short='y', long, value_parser = parse_utxo_strategy, default_value = "fifo")]
-    pub utxo_strat: UTXOStrategy,
-
-    /// Transaction ID
-    #[arg(
-        short = 'i',
-        long,
-        default_value = "c36d0c020577c2703dc0e202d8f1ac2626d29d81c449f81079b60c6b07263166"
-    )] // dummy tx, do not use
-    pub txid: String,
-
-    /// Transaction hash
-    #[arg(
-        short = 't',
-        long,
-        default_value = "dcaf015d7d6fdfc8a7f38f1a17991aa9975bd93109db2d3756e1533b519d4fae"
-    )] // dummy tx, do not use
-    pub tx_hex: String,
-
-    /// PSBT hash
-    #[arg(
-        short = 'p',
-        long,
-        default_value = "cHNidP8BAH0CAAAAAbleQkslv9ReG8S64ny+JbejMMyMKKNF2SOBOiqVAAAAD9///"
-    )] // dummy tx, do not use
-    pub psbt_hex: String,
-
-    /// Multiple PSBTs
-    #[arg(
-        short = 'l',
-        long,
-        value_delimiter = ',',
-        default_value = "cHNidP8BAH0CAAAAAbAip9TqQ,cHNidP8BAH0CAAAAAbAip9TqQ"
-    )]
-    pub psbts: Vec<String>,
-
-    /// Vout
-    #[arg(short = 'o', long, default_value = "0")]
-    pub vout: u32,
-
-    /// File path
-    #[arg(
-        short = 'f',
-        long,
-        default_value = "bin/satoshi-suite/public/happy-dog.png"
-    )]
-    pub file_path: String,
-
+    #[command(flatten)]
+    pub options: Options,
     #[command(subcommand)]
     pub action: Action,
 }
 
-#[derive(clap::Subcommand, Debug)]
+#[derive(Parser, Debug)]
+pub struct Options {
+    /// Network to use (mainnet, testnet, regtest)
+    #[arg(long, value_parser = parse_network_type, default_value = "regtest")]
+    pub network: Network,
+
+    /// RPC URL for Bitcoin Core
+    #[arg(long, default_value = "http://127.0.0.1")]
+    pub rpc_url: String,
+
+    /// RPC Username for Bitcoin Core
+    #[arg(long, default_value = "user")]
+    pub rpc_username: String,
+
+    /// RPC Password for Bitcoin Core
+    #[arg(long, default_value = "password")]
+    pub rpc_password: String,
+
+    /// Whether to create wallets if they don't exist
+    #[arg(long, default_value = "true")]
+    pub create_wallets: bool,
+}
+
+#[derive(Subcommand, Debug)]
 pub enum Action {
-    BootstrapEnv,
+    /// Bootstrap a testing environment
+    BootstrapEnv {
+        /// Address type for generated addresses
+        #[arg(short='z', long, value_parser = parse_address_type, default_value = "bech32")]
+        address_type: AddressType,
+    },
+
+    /// Get the current block height
     GetBlockHeight,
-    NewWallet,
-    NewMultisig,
-    GetWalletInfo,
-    ListDescriptors,
-    GetNewAddress,
-    GetAddressInfo,
-    DeriveAddresses,
-    RescanBlockchain,
-    GetBalance,
-    MineBlocks,
-    ListUnspent,
-    GetTx,
-    GetTxOut,
-    SendBtc,
-    SignTx,
-    DecodeRawTx,
-    VerifySignedTx,
-    CreatePsbt,
-    ProcessPsbt,
-    DecodePsbt,
-    AnalyzePsbt,
-    CombinePsbts,
-    FinalizePsbt,
-    FinalizePsbtAndBroadcast,
-    InscribeOrdinal,
-    EtchRune,
-    BroadcastTx,
+
+    /// Create a new wallet
+    NewWallet {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+    },
+
+    /// Create a new multisig wallet
+    NewMultisig {
+        /// List of wallet names to use in multisig
+        #[arg(short = 'v', long, value_delimiter = ',')]
+        wallet_names: Vec<String>,
+        /// Number of required signatures
+        #[arg(short = 'n', long)]
+        nrequired: u32,
+        /// Name for the multisig wallet
+        #[arg(short = 'm', long)]
+        multisig_name: String,
+    },
+
+    /// Get wallet information
+    GetWalletInfo {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+    },
+
+    /// List wallet descriptors
+    ListDescriptors {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+    },
+
+    /// Get a new address from wallet
+    GetNewAddress {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Address type
+        #[arg(short='z', long, value_parser = parse_address_type, default_value = "bech32")]
+        address_type: AddressType,
+    },
+
+    /// Get address information
+    GetAddressInfo {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Address to get info for
+        #[arg(short = 'a', long)]
+        address: String,
+    },
+
+    /// Derive addresses from a descriptor
+    DeriveAddresses {
+        /// Descriptor to derive from
+        #[arg(short = 'd', long)]
+        descriptor: String,
+        /// Start index
+        #[arg(short = 's', long, default_value = "0")]
+        start: u32,
+        /// End index
+        #[arg(short = 'e', long, default_value = "1")]
+        end: u32,
+    },
+
+    /// Rescan the blockchain
+    RescanBlockchain {
+        /// Start height for rescan
+        #[arg(short = 's', long, default_value = "0")]
+        start: u32,
+    },
+
+    /// Get wallet balance
+    GetBalance {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+    },
+
+    /// List unspent transactions
+    ListUnspent {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+    },
+
+    /// Get transaction information
+    GetTx {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Transaction ID
+        #[arg(short = 'i', long)]
+        txid: String,
+    },
+
+    /// Get transaction output information
+    GetTxOut {
+        /// Transaction ID
+        #[arg(short = 'i', long)]
+        txid: String,
+        /// Output index
+        #[arg(short = 'o', long, default_value = "0")]
+        vout: u32,
+    },
+
+    /// Send BTC to an address
+    SendBtc {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Recipient address
+        #[arg(short = 'r', long)]
+        recipient: String,
+        /// Amount to send
+        #[arg(short='x', long, value_parser = parse_amount)]
+        amount: Amount,
+    },
+
+    /// Sign a transaction
+    SignTx {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Recipient address
+        #[arg(short = 'r', long)]
+        recipient: String,
+        /// Amount to send
+        #[arg(short='x', long, value_parser = parse_amount)]
+        amount: Amount,
+        /// Fee amount
+        #[arg(short='f', long, value_parser = parse_amount)]
+        fee_amount: Amount,
+        /// UTXO selection strategy
+        #[arg(short='y', long, value_parser = parse_utxo_strategy, default_value = "fifo")]
+        utxo_strat: UTXOStrategy,
+    },
+
+    /// Decode a raw transaction
+    DecodeRawTx {
+        /// Raw transaction hex
+        #[arg(short = 't', long)]
+        tx_hex: String,
+    },
+
+    /// Verify a signed transaction
+    VerifySignedTx {
+        /// Signed transaction hex
+        #[arg(short = 't', long)]
+        tx_hex: String,
+    },
+
+    /// Broadcast a transaction
+    BroadcastTx {
+        /// Transaction hex to broadcast
+        #[arg(short = 't', long)]
+        tx_hex: String,
+    },
+
+    /// Create a PSBT
+    CreatePsbt {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Recipient address
+        #[arg(short = 'r', long)]
+        recipient: String,
+        /// Amount to send
+        #[arg(short='x', long, value_parser = parse_amount)]
+        amount: Amount,
+        /// Fee amount
+        #[arg(short='f', long, value_parser = parse_amount)]
+        fee_amount: Amount,
+        /// UTXO selection strategy
+        #[arg(short='y', long, value_parser = parse_utxo_strategy, default_value = "fifo")]
+        utxo_strat: UTXOStrategy,
+    },
+
+    /// Process a PSBT
+    ProcessPsbt {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// PSBT hex
+        #[arg(short = 'p', long)]
+        psbt_hex: String,
+    },
+
+    /// Decode a PSBT
+    DecodePsbt {
+        /// PSBT hex
+        #[arg(short = 'p', long)]
+        psbt_hex: String,
+    },
+
+    /// Analyze a PSBT
+    AnalyzePsbt {
+        /// PSBT hex
+        #[arg(short = 'p', long)]
+        psbt_hex: String,
+    },
+
+    /// Combine multiple PSBTs
+    CombinePsbts {
+        /// List of PSBT hexes
+        #[arg(short = 'l', long, value_delimiter = ',')]
+        psbts: Vec<String>,
+    },
+
+    /// Finalize a PSBT
+    FinalizePsbt {
+        /// PSBT hex
+        #[arg(short = 'p', long)]
+        psbt_hex: String,
+    },
+
+    /// Finalize and broadcast a PSBT
+    FinalizePsbtAndBroadcast {
+        /// PSBT hex
+        #[arg(short = 'p', long)]
+        psbt_hex: String,
+    },
+
+    /// Inscribe an ordinal
+    InscribeOrdinal {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Postage amount in sats
+        #[arg(short = 'p', long, default_value = "10000")]
+        postage: u64,
+        /// File path for inscription
+        #[arg(short = 'f', long)]
+        file_path: String,
+    },
+
+    /// Etch a rune
+    EtchRune {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Postage amount in sats
+        #[arg(short = 'p', long, default_value = "10000")]
+        postage: u64,
+        /// File path for etching data
+        #[arg(short = 'f', long)]
+        file_path: String,
+    },
+
+    /// Mine blocks
+    MineBlocks {
+        /// Name of the wallet
+        #[arg(short = 'w', long, default_value = "default_wallet")]
+        wallet_name: String,
+        /// Number of blocks to mine
+        #[arg(short = 'b', long, default_value = "1")]
+        blocks: u64,
+        /// Address type for coinbase
+        #[arg(short='z', long, value_parser = parse_address_type, default_value = "bech32")]
+        address_type: AddressType,
+    },
 }
 
 fn parse_amount(s: &str) -> Result<Amount, &'static str> {
