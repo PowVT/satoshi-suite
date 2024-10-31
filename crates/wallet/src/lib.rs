@@ -9,3 +9,6 @@ pub use builder::*;
 
 mod taproot;
 pub use taproot::*;
+
+mod address_utils;
+pub use address_utils::*;

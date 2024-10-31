@@ -353,12 +353,7 @@ impl Wallet {
         let postage = Amount::from_sat(*postage);
 
         // Select UTXOs
-        let selected_utxos = strat_handler(
-            &utxos,
-            postage,
-            commit_fee,
-            UTXOStrategy::SingleUTXO,
-        )?;
+        let selected_utxos = strat_handler(&utxos, postage, commit_fee, UTXOStrategy::SingleUTXO)?;
         if selected_utxos.is_empty() {
             return Err("No UTXOs selected for etching".into());
         }

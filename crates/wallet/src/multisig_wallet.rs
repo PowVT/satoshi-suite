@@ -4,7 +4,7 @@ use log::info;
 
 use serde_json::json;
 
-use bitcoin::{Address, Amount};
+use bitcoin::Amount;
 use bitcoincore_rpc::{
     json::{AddressType, CreateRawTransactionInput, WalletCreateFundedPsbtResult},
     RpcApi,
@@ -108,14 +108,13 @@ impl MultisigWallet {
 
     pub fn create_psbt(
         wallet_name: &str,
-        recipient: &Address,
+        recipient: &String,
         amount: Amount,
         fee_amount: Amount,
         utxo_strat: UTXOStrategy,
         config: &Config,
     ) -> Result<WalletCreateFundedPsbtResult, Box<dyn Error>> {
         let wallet: Wallet = Wallet::new(wallet_name, config)?;
-
         // Ensure the wallet is a multisig wallet
         if wallet.get_wallet_info()?.private_keys_enabled {
             return Err("Wallet is not a multisig wallet".into());

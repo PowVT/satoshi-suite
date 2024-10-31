@@ -1,7 +1,5 @@
-use std::str::FromStr;
-
 use bitcoin::amount::Denomination::Bitcoin;
-use bitcoin::{Address, Amount, Network};
+use bitcoin::{Amount, Network};
 use bitcoincore_rpc::json::AddressType;
 use clap::Parser;
 
@@ -59,12 +57,20 @@ pub struct Cli {
     pub blocks: u64,
 
     /// Transaction recipient address
-    #[arg(short='r', long, value_parser = string_to_address, default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")]
-    pub recipient: Address,
+    #[arg(
+        short = 'r',
+        long,
+        default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
+    )]
+    pub recipient: String,
 
     /// Wallet address
-    #[arg(short='a', long, value_parser = string_to_address, default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")]
-    pub address: Address,
+    #[arg(
+        short = 'a',
+        long,
+        default_value = "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
+    )]
+    pub address: String,
 
     /// Wallet descriptor
     #[arg(short = 'd', long, default_value = "descriptor-here")]
@@ -182,13 +188,6 @@ pub enum Action {
 
 fn parse_amount(s: &str) -> Result<Amount, &'static str> {
     Amount::from_str_in(s, Bitcoin).map_err(|_| "invalid amount")
-}
-
-fn string_to_address(addr_str: &str) -> Result<Address, &'static str> {
-    match Address::from_str(addr_str) {
-        Ok(address) => Ok(address.assume_checked()),
-        Err(_) => Err("Invalid address string"),
-    }
 }
 
 fn parse_network_type(s: &str) -> Result<Network, &'static str> {

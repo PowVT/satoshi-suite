@@ -5,14 +5,16 @@ use log::info;
 use ordinals::{Etching, Rune, Terms};
 use serde_json::json;
 
-use bitcoin::{Address, Amount, Txid};
+use bitcoin::{Amount, Txid};
 use bitcoincore_rpc::{json::AddressType, RawTx, RpcApi};
 
 use satoshi_suite_client::create_rpc_client;
 use satoshi_suite_config::Config;
 use satoshi_suite_signing::{sign_tx, verify_signed_tx};
 use satoshi_suite_utxo_selection::UTXOStrategy;
-use satoshi_suite_wallet::{MultisigWallet, Wallet};
+use satoshi_suite_wallet::{
+    get_scriptpubkey_from_address, string_to_address, MultisigWallet, Wallet,
+};
 
 use crate::cli::{Action, Cli};
 
@@ -162,11 +164,16 @@ pub fn get_new_address(
 
 pub fn get_address_info(
     wallet_name: &str,
-    address: &Address,
+    address: &String,
     config: &Config,
 ) -> Result<(), Box<dyn Error>> {
     let wallet = Wallet::new(wallet_name, config)?;
-    let address_info = wallet.get_address_info(address)?;
+    let addr = string_to_address(address, config.network)?;
+
+    let pubkey = get_scriptpubkey_from_address(address, config.network)?;
+    info!("Address PubKey: {}", pubkey);
+
+    let address_info = wallet.get_address_info(&addr)?;
     info!("{:#?}", address_info);
     Ok(())
 }
@@ -223,19 +230,21 @@ pub fn get_tx_out(txid: &str, vout: u32, config: &Config) -> Result<(), Box<dyn 
 
 pub fn send_btc(
     wallet_name: &str,
-    recipient: &Address,
+    recipient: &String,
     amount: bitcoin::Amount,
     config: &Config,
 ) -> Result<(), Box<dyn Error>> {
     let wallet = Wallet::new(wallet_name, config)?;
-    let outpoint = wallet.send(recipient, amount)?;
+    let recipient_addr = string_to_address(recipient, config.network)?;
+
+    let outpoint = wallet.send(&recipient_addr, amount)?;
     info!("Sent: {}", outpoint);
     Ok(())
 }
 
 pub fn sign_transaction(
     wallet_name: &str,
-    recipient: &Address,
+    recipient: &String,
     amount: bitcoin::Amount,
     fee_amount: bitcoin::Amount,
     utxo_strat: UTXOStrategy,
@@ -243,7 +252,16 @@ pub fn sign_transaction(
 ) -> Result<(), Box<dyn Error>> {
     let client = create_rpc_client(config, None)?;
     let wallet = Wallet::new(wallet_name, config)?;
-    let tx = sign_tx(&client, &wallet, &recipient, amount, fee_amount, utxo_strat)?;
+    let recipient_addr = string_to_address(recipient, config.network)?;
+
+    let tx = sign_tx(
+        &client,
+        &wallet,
+        &recipient_addr,
+        amount,
+        fee_amount,
+        utxo_strat,
+    )?;
     info!("Signed transaction: {}", tx.raw_hex());
     Ok(())
 }
@@ -271,7 +289,7 @@ pub fn broadcast_tx(tx_hex: &str, config: &Config) -> Result<(), Box<dyn Error>>
 
 pub fn create_psbt(
     wallet_name: &str,
-    recipient: &Address,
+    recipient: &String,
     amount: bitcoin::Amount,
     fee_amount: bitcoin::Amount,
     utxo_strat: UTXOStrategy,
