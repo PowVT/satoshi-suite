@@ -148,7 +148,6 @@ pub fn get_block_height(config: &Config) -> Result<(), Box<dyn Error>> {
 
 pub fn new_wallet(wallet_name: &str, config: &Config) -> Result<(), Box<dyn Error>> {
     let _ = Wallet::new(wallet_name, config)?;
-    info!("Wallet created: {}", wallet_name);
     Ok(())
 }
 

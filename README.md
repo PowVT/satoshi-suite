@@ -44,7 +44,7 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
    just create-wallet satoshi
 
    # Get a new address for the wallet
-   just get-new-address satoshi
+   just get-new-address satoshi bech32m
    ```
 
 4. To stop all services:
@@ -54,7 +54,7 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
 
 ## Available Commands
 
-> View all possible commands and their inputs with `just -l`
+> View all possible commands and their inputs using `just help` and `just -l`.
 
 ### Wallet Commands
 
