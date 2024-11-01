@@ -134,6 +134,9 @@ bitcoin_datadir := "./data/bitcoin"
 bitcoin_cli := "./bitcoin-core/src/bitcoin-cli -regtest -rpcuser=user -rpcpassword=password"
 bitcoind := "./bitcoin-core/src/bitcoind -regtest -rpcuser=user -rpcpassword=password"
 
+ord_datadir := "./data/ord"
+ord := "./ord/target/release/ord --regtest --bitcoin-rpc-username=user --bitcoin-rpc-password=password"
+
 # bootstrap a testing environment. Gives you 10 wallets (wallet1, wallet2, etc.) with 50 BTC each.
 bootstrap-env address_type="bech32":
     RUST_LOG=info ./target/release/satoshi-suite bootstrap-env -z {{ address_type }}
@@ -161,6 +164,43 @@ bootstrap-btc:
     just clean-bitcoin-data
     just stop-bitcoind
     just start-bitcoind
+
+# start the Ordinal server
+start-ord *ARGS:
+    mkdir -p {{ ord_datadir }}
+    @if lsof -ti :18443 >/dev/null 2>&1; then \
+        {{ ord }} \
+            --data-dir={{ord_datadir}} \
+            --index-addresses \
+            --index-runes \
+            --index-sats \
+            --index-transactions \
+            --commit-interval=1 \
+            {{ ARGS }} \
+            server; \
+    else \
+        echo "run just bootstrap-btc before starting ord server."; \
+    fi
+
+# kill the Ordinal server
+stop-ord:
+    @if lsof -ti :80 >/dev/null 2>&1; then \
+        kill $(lsof -t -i:80); \
+        echo "ord server on port 80 killed."; \
+    else \
+        echo "No ord server found running on port 80."; \
+    fi
+
+# remove Ordinals data
+clean-ord-data:
+    rm -rf {{ ord_datadir }}
+
+# stop all services and remove all cached data
+kill-all:
+    just stop-bitcoind
+    just stop-ord
+    just clean-bitcoin-data
+    just clean-ord-data
 
 alias b := build
 
