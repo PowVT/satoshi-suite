@@ -47,7 +47,7 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
    just get-new-address satoshi bech32m
    ```
 
-4. To stop all services:
+4. To stop all services and delete data cache:
    ```bash
    just kill-all
    ```
