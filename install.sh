@@ -21,16 +21,38 @@ case $ARCH in
         ;;
 esac
 
-# Construct download URL
+# Get latest release version
 VERSION=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/satoshi-suite"
 
-echo "⬇️  Downloading satoshi-suite $VERSION..."
-curl -L "$DOWNLOAD_URL" -o $BINARY_NAME
+# Determine platform-specific asset name
+case $OS in
+    darwin)
+        ASSET_NAME="satoshi-suite-${VERSION}-${ARCH}-apple-darwin.tar.gz"
+        ;;
+    linux)
+        ASSET_NAME="satoshi-suite-${VERSION}-${ARCH}-unknown-linux-gnu.tar.gz"
+        ;;
+    *)
+        echo "Unsupported operating system: $OS"
+        exit 1
+        ;;
+esac
 
-echo "📦 Installing satoshi-suite..."
-chmod +x $BINARY_NAME
-sudo mv $BINARY_NAME /usr/local/bin/
+# Construct download URL
+DOWNLOAD_URL="https://github.com/$REPO/releases/download/${VERSION}/${ASSET_NAME}"
+
+echo "⬇️  Downloading satoshi-suite ${VERSION}..."
+curl -L "$DOWNLOAD_URL" -o "$ASSET_NAME"
+
+echo "📦 Extracting..."
+tar xzf "$ASSET_NAME"
+
+echo "🔧 Installing..."
+chmod +x satoshi-suite
+sudo mv satoshi-suite /usr/local/bin/
+
+echo "🧹 Cleaning up..."
+rm -f "$ASSET_NAME"
 
 echo "✅ Successfully installed satoshi-suite!"
 echo "Run 'satoshi-suite --help' to get started"
