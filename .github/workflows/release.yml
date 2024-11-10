@@ -1,57 +1,76 @@
 name: Release
-
 on:
   push:
     tags:
-      - 'v*'
+    - '*'
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build:
-    name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: macos-latest
-            target: aarch64-apple-darwin
-
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-      
-      - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }}
-      
-      - name: Package Binary
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../satoshi-suite-${{ github.ref_name }}-${{ matrix.target }}.tar.gz satoshi-suite
-          cd ../../..
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: binaries
-          path: satoshi-suite-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
-          
   release:
-    needs: build
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - aarch64-apple-darwin
+        - x86_64-apple-darwin
+        - x86_64-pc-windows-msvc
+        - x86_64-unknown-linux-gnu
+        include:
+        - target: aarch64-apple-darwin
+          os: macos-latest
+          target_rustflags: ''
+        - target: x86_64-apple-darwin
+          os: macos-latest
+          target_rustflags: ''
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+          target_rustflags: ''
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+          target_rustflags: ''
+    runs-on: ${{matrix.os}}
+    
     steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: binaries
-          
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: satoshi-suite-*
-          generate_release_notes: true
+    - uses: actions/checkout@v2
+    
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        override: true
+        target: ${{ matrix.target }}
+        toolchain: stable
+    
+    - name: Install Linux Dependencies
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install musl-tools libssl-dev pkg-config
+    
+    - name: Build Release
+      run: cargo build --release --target ${{ matrix.target }}
+    
+    - name: Package Binary
+      env:
+        TARGET: ${{ matrix.target }}
+        VERSION: ${{ github.ref_name }}
+      run: |
+        cd target/${{ matrix.target }}/release
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          7z a ../../../satoshi-suite-$VERSION-$TARGET.zip satoshi-suite.exe
+          echo "::set-output name=archive::satoshi-suite-$VERSION-$TARGET.zip"
+        else
+          tar czf ../../../satoshi-suite-$VERSION-$TARGET.tar.gz satoshi-suite
+          echo "::set-output name=archive::satoshi-suite-$VERSION-$TARGET.tar.gz"
+        fi
+      id: package
+    
+    - name: Publish Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: ${{ steps.package.outputs.archive }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
