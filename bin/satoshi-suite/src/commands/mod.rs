@@ -1,7 +1,5 @@
 use std::{error::Error, str::FromStr};
 
-use log::info;
-
 use ordinals::{Etching, Rune, Terms};
 use serde_json::json;
 
@@ -15,6 +13,7 @@ use satoshi_suite_utxo_selection::UTXOStrategy;
 use satoshi_suite_wallet::{
     get_scriptpubkey_from_address, string_to_address, MultisigWallet, Wallet,
 };
+use tracing::info;
 
 use crate::cli::{Action, Cli};
 
@@ -203,9 +202,9 @@ pub fn get_address_info(
     config: &Config,
 ) -> Result<(), Box<dyn Error>> {
     let wallet = Wallet::new(wallet_name, config)?;
-    let addr = string_to_address(address, config.network)?;
+    let addr = string_to_address(address, config.bitcoin_rpc.network())?;
 
-    let pubkey = get_scriptpubkey_from_address(address, config.network)?;
+    let pubkey = get_scriptpubkey_from_address(address, config.bitcoin_rpc.network())?;
     info!("Address PubKey: {}", pubkey);
 
     let address_info = wallet.get_address_info(&addr)?;
@@ -270,7 +269,7 @@ pub fn send_btc(
     config: &Config,
 ) -> Result<(), Box<dyn Error>> {
     let wallet = Wallet::new(wallet_name, config)?;
-    let recipient_addr = string_to_address(recipient, config.network)?;
+    let recipient_addr = string_to_address(recipient, config.bitcoin_rpc.network())?;
 
     let outpoint = wallet.send(&recipient_addr, amount)?;
     info!("Sent: {}", outpoint);
@@ -287,7 +286,7 @@ pub fn sign_transaction(
 ) -> Result<(), Box<dyn Error>> {
     let client = create_rpc_client(config, None)?;
     let wallet = Wallet::new(wallet_name, config)?;
-    let recipient_addr = string_to_address(recipient, config.network)?;
+    let recipient_addr = string_to_address(recipient, config.bitcoin_rpc.network())?;
 
     let tx = sign_tx(
         &client,

@@ -1,7 +1,5 @@
 use std::{error::Error, fmt};
 
-use log::info;
-
 use serde::Deserialize;
 
 use bitcoin::key::UntweakedKeypair;
@@ -23,6 +21,7 @@ use satoshi_suite_client::{create_rpc_client, ClientError};
 use satoshi_suite_config::Config;
 use satoshi_suite_ordinals::InscriptionData;
 use satoshi_suite_utxo_selection::{strat_handler, UTXOStrategy};
+use tracing::info;
 
 use crate::{build_commit_transaction, build_reveal_transaction, create_taproot_info};
 
@@ -130,7 +129,7 @@ impl Wallet {
 
         Ok(Wallet {
             client: create_rpc_client(config, Some(&name))?,
-            network: config.network,
+            network: config.bitcoin_rpc.network(),
         })
     }
 

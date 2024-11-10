@@ -2,26 +2,21 @@ use std::error::Error;
 
 use clap::Parser;
 
+use tracing_subscriber::EnvFilter;
+
 pub mod cli;
 use cli::Cli;
 
 mod commands;
 use commands::handler;
 
-use satoshi_suite_config::Config;
-
 fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
 
     let args = Cli::parse();
 
-    let config = Config::new(
-        args.options.network,
-        args.options.rpc_url.clone(),
-        args.options.rpc_username.clone(),
-        args.options.rpc_password.clone(),
-        args.options.create_wallets,
-    );
-
+    let config = args.options.make_config();
     handler(&args, &config)
 }

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error};
 
-use log::info;
+use tracing::info;
 
 use serde_json::json;
 

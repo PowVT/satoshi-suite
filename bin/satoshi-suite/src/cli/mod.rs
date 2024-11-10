@@ -1,8 +1,11 @@
+use std::path::PathBuf;
+
 use bitcoin::amount::Denomination::Bitcoin;
 use bitcoin::{Amount, Network};
 use bitcoincore_rpc::json::AddressType;
 use clap::{Parser, Subcommand};
 
+use satoshi_suite_config::Config;
 use satoshi_suite_utxo_selection::UTXOStrategy;
 
 #[derive(Parser, Debug)]
@@ -22,20 +25,60 @@ pub struct Options {
     pub network: Network,
 
     /// RPC URL for Bitcoin Core
-    #[arg(long, default_value = "http://127.0.0.1")]
-    pub rpc_url: String,
+    #[arg(long)]
+    pub rpc_url: Option<String>,
 
     /// RPC Username for Bitcoin Core
-    #[arg(long, default_value = "user")]
-    pub rpc_username: String,
+    #[arg(long)]
+    pub rpc_username: Option<String>,
 
     /// RPC Password for Bitcoin Core
-    #[arg(long, default_value = "password")]
-    pub rpc_password: String,
+    #[arg(long)]
+    pub rpc_password: Option<String>,
+
+    /// Path to Bitcoin Core cookie file (alternative to username/password)
+    #[arg(long)]
+    pub cookie_file: Option<PathBuf>,
+
+    /// Data directory for internal Bitcoin Core instance
+    #[arg(long)]
+    pub bitcoin_data_dir: Option<PathBuf>,
 
     /// Whether to create wallets if they don't exist
     #[arg(long, default_value = "true")]
     pub create_wallets: bool,
+}
+
+impl Options {
+    pub fn make_config(&self) -> Config {
+        // If rpc_url is provided, treat as external Bitcoin Core
+        if self.rpc_url.is_some() {
+            Config::new_external(
+                self.network,
+                self.rpc_url.clone().unwrap(),
+                self.rpc_username.clone(),
+                self.rpc_password.clone(),
+                self.cookie_file.clone(),
+                self.create_wallets,
+            )
+        } else {
+            // Otherwise use internal Bitcoin Core with default or specified settings
+            Config::new_internal(
+                self.network,
+                "http://127.0.0.1".to_string(),
+                self.rpc_username
+                    .clone()
+                    .unwrap_or_else(|| "user".to_string()),
+                self.rpc_password
+                    .clone()
+                    .unwrap_or_else(|| "password".to_string()),
+                self.bitcoin_data_dir
+                    .clone()
+                    .unwrap_or_else(|| PathBuf::from("./data/bitcoin")),
+                self.create_wallets,
+            )
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]

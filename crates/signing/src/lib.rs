@@ -1,5 +1,7 @@
 use std::{collections::HashMap, error::Error};
 
+use tracing::{info, warn};
+
 use bitcoin::{
     consensus::{deserialize, serialize},
     Address, Amount, OutPoint, Transaction, TxOut,
@@ -9,8 +11,6 @@ use bitcoincore_rpc::{
     json::{AddressType, CreateRawTransactionInput, ListUnspentResultEntry},
     Client, RpcApi,
 };
-
-use log::{info, warn};
 
 use satoshi_suite_utxo_selection::{strat_handler, UTXOStrategy};
 use satoshi_suite_wallet::Wallet;

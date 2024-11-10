@@ -13,4 +13,4 @@ satoshi-suite-wallet.workspace = true
 bitcoin.workspace = true
 bitcoincore-rpc.workspace = true
 hex.workspace = true
-log.workspace = true
+tracing.workspace = true
