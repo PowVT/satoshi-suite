@@ -14,16 +14,23 @@ Inspiration for this repository came from the [taproot-wizards/purrfect_vault](h
 
 For reference, check the bitcoin core build [docs](https://github.com/bitcoin/bitcoin/blob/master/doc/build-unix.md) for required dependencies.
 
-## How to Run
+## Installation
 
-### Clone the Repository
+### Quick Install (Linux/macOS)
+
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/PowVT/satoshi-suite/main/install.sh | bash
+   ```
+
+### Build from the source
+   If you intend to run a local regtest chain this is recommended installation method. 
 
    ```bash
     git clone https://github.com/powvt/satoshi-suite.git
     cd satoshi-suite
    ```
 
-### Building and Running
+#### Building and Running
 
 Use `just` as a command wrapper. See the `justfile` for executing commands directly.
 
@@ -31,11 +38,6 @@ Use `just` as a command wrapper. See the `justfile` for executing commands direc
    ```bash
    just install-deps
    just build
-   ```
-
-2. Copy the binary to a location in your PATH.
-   ```bash
-   sudo cp target/release/satoshi-suite /usr/local/bin/
    ```
 
 ## Configuration Options
