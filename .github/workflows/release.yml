@@ -4,73 +4,48 @@ on:
     tags:
     - '*'
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  release:
+  build:
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        target:
-        - aarch64-apple-darwin
-        - x86_64-apple-darwin
-        - x86_64-pc-windows-msvc
-        - x86_64-unknown-linux-gnu
         include:
-        - target: aarch64-apple-darwin
-          os: macos-latest
-          target_rustflags: ''
-        - target: x86_64-apple-darwin
-          os: macos-latest
-          target_rustflags: ''
-        - target: x86_64-pc-windows-msvc
-          os: windows-latest
-          target_rustflags: ''
-        - target: x86_64-unknown-linux-gnu
-          os: ubuntu-latest
-          target_rustflags: ''
-    runs-on: ${{matrix.os}}
-    
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
     steps:
-    - uses: actions/checkout@v2
-    
+    - uses: actions/checkout@v3
+
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@master
       with:
-        override: true
-        target: ${{ matrix.target }}
         toolchain: stable
-    
-    - name: Install Linux Dependencies
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        sudo apt-get update
-        sudo apt-get install musl-tools libssl-dev pkg-config
-    
-    - name: Build Release
+        targets: ${{ matrix.target }}
+
+    - name: Build
       run: cargo build --release --target ${{ matrix.target }}
-    
-    - name: Package Binary
-      env:
-        TARGET: ${{ matrix.target }}
-        VERSION: ${{ github.ref_name }}
+
+    - name: Create archive
+      shell: bash
       run: |
         cd target/${{ matrix.target }}/release
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          7z a ../../../satoshi-suite-$VERSION-$TARGET.zip satoshi-suite.exe
-          echo "::set-output name=archive::satoshi-suite-$VERSION-$TARGET.zip"
+          7z a ../../../satoshi-suite-${{ github.ref_name }}-${{ matrix.target }}.zip satoshi-suite.exe
         else
-          tar czf ../../../satoshi-suite-$VERSION-$TARGET.tar.gz satoshi-suite
-          echo "::set-output name=archive::satoshi-suite-$VERSION-$TARGET.tar.gz"
+          tar czf ../../../satoshi-suite-${{ github.ref_name }}-${{ matrix.target }}.tar.gz satoshi-suite
         fi
-      id: package
-    
-    - name: Publish Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+        cd ../../..
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
       with:
-        files: ${{ steps.package.outputs.archive }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: satoshi-suite-${{ github.ref_name }}-${{ matrix.target }}.*
+        file_glob: true
+        tag: ${{ github.ref }}
