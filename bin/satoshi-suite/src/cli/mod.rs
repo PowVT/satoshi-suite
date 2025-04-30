@@ -234,7 +234,7 @@ pub enum Action {
     },
 
     /// Decode a raw transaction
-    DecodeRawTx {
+    DecodeTx {
         /// Raw transaction hex
         #[arg(short = 't', long)]
         tx_hex: String,

@@ -66,7 +66,7 @@ pub fn handler(args: &Cli, config: &Config) -> Result<(), Box<dyn Error>> {
             *utxo_strat,
             config,
         ),
-        Action::DecodeRawTx { tx_hex } => decode_raw_tx(tx_hex.as_str(), config),
+        Action::DecodeTx { tx_hex } => decode_raw_tx(tx_hex.as_str(), config),
         Action::VerifySignedTx { tx_hex } => verify_signed_transaction(tx_hex.as_str(), config),
         Action::BroadcastTx { tx_hex } => broadcast_tx(tx_hex.as_str(), config),
         Action::CreatePsbt {
