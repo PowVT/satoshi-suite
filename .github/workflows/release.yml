@@ -11,9 +11,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
           - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
+            target: aarch64-unknown-linux-musl
           - os: macos-latest
             target: x86_64-apple-darwin
           - os: macos-latest
@@ -30,17 +30,17 @@ jobs:
         toolchain: stable
         targets: ${{ matrix.target }}
 
-    - name: Install cross
-      if: matrix.target == 'aarch64-unknown-linux-gnu'
+    - name: Install cross for musl targets
+      if: contains(matrix.target, 'musl')
       run: cargo install cross --git https://github.com/cross-rs/cross
 
     - name: Build
       shell: bash
       run: |
-        if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+        if [[ "${{ matrix.target }}" == *"musl"* ]]; then
           cross build --release --target ${{ matrix.target }}
         else
-          OPENSSL_STATIC=1 cargo build --release --target ${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }}
         fi
 
     - name: Create archive
