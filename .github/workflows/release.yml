@@ -30,11 +30,12 @@ jobs:
         toolchain: stable
         targets: ${{ matrix.target }}
 
-    - name: Install cross-compilation tools
+    - name: Install cross-compilation tools and dependencies
       if: matrix.target == 'aarch64-unknown-linux-gnu'
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+        sudo apt-get install -y libssl-dev pkg-config
 
     - name: Build
       shell: bash
@@ -49,6 +50,11 @@ jobs:
           export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
           export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          
+          # Configure pkg-config for cross compilation
+          export PKG_CONFIG_ALLOW_CROSS=1
+          export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
           
           cargo build --release --target ${{ matrix.target }}
         else
