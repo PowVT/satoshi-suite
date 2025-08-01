@@ -30,14 +30,14 @@ jobs:
         toolchain: stable
         targets: ${{ matrix.target }}
 
-    - name: Install cross for musl targets
-      if: contains(matrix.target, 'musl')
+    - name: Install cross
+      if: contains(matrix.target, 'linux')
       run: cargo install cross --git https://github.com/cross-rs/cross
 
     - name: Build
       shell: bash
       run: |
-        if [[ "${{ matrix.target }}" == *"musl"* ]]; then
+        if [[ "${{ matrix.target }}" == *"linux"* ]]; then
           cross build --release --target ${{ matrix.target }}
         else
           cargo build --release --target ${{ matrix.target }}
