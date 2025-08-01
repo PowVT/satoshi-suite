@@ -30,15 +30,27 @@ jobs:
         toolchain: stable
         targets: ${{ matrix.target }}
 
-    - name: Install cross
+    - name: Install cross-compilation tools
       if: matrix.target == 'aarch64-unknown-linux-gnu'
-      run: cargo install cross --git https://github.com/cross-rs/cross
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
     - name: Build
       shell: bash
       run: |
         if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-          cross build --release --target ${{ matrix.target }}
+          # Configure cargo to use the cross-compiler
+          mkdir -p .cargo
+          echo '[target.aarch64-unknown-linux-gnu]' > .cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
+          
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+          export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          
+          cargo build --release --target ${{ matrix.target }}
         else
           cargo build --release --target ${{ matrix.target }}
         fi
