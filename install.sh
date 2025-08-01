@@ -30,7 +30,7 @@ case $OS in
         ASSET_NAME="satoshi-suite-${VERSION}-${ARCH}-apple-darwin.tar.gz"
         ;;
     linux)
-        ASSET_NAME="satoshi-suite-${VERSION}-${ARCH}-unknown-linux-musl.tar.gz"
+        ASSET_NAME="satoshi-suite-${VERSION}-${ARCH}-unknown-linux-gnu.tar.gz"
         ;;
     *)
         echo "Unsupported operating system: $OS"
