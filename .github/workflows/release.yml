@@ -38,7 +38,10 @@ jobs:
       shell: bash
       run: |
         if [[ "${{ matrix.target }}" == *"linux"* ]]; then
-          OPENSSL_STATIC=1 cross build --release --target ${{ matrix.target }}
+          # Force vendored OpenSSL
+          export OPENSSL_STATIC=1
+          export OPENSSL_NO_VENDOR=0
+          cross build --release --target ${{ matrix.target }}
         else
           cargo build --release --target ${{ matrix.target }}
         fi
