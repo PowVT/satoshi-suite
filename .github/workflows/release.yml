@@ -38,7 +38,7 @@ jobs:
       shell: bash
       run: |
         if [[ "${{ matrix.target }}" == *"linux"* ]]; then
-          cross build --release --target ${{ matrix.target }}
+          OPENSSL_STATIC=1 cross build --release --target ${{ matrix.target }}
         else
           cargo build --release --target ${{ matrix.target }}
         fi
